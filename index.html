@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Property Ledger</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+  :root{
+    --bg:#0f1117;
+    --card:#171a23;
+    --card-2:#1d212c;
+    --border:#252a37;
+    --text:#e8ebf0;
+    --muted:#8b93a7;
+    --accent:#6366f1;
+    --accent-2:#818cf8;
+    --green:#10b981;
+    --red:#ef4444;
+    --amber:#f59e0b;
+  }
+  body{background:var(--bg);color:var(--text);min-height:100vh;padding:28px 20px}
+  .shell{max-width:1180px;margin:0 auto}
+
+  /* Top bar */
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;flex-wrap:wrap;gap:16px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.3rem;box-shadow:0 8px 24px rgba(99,102,241,.35)}
+  .brand h1{font-size:1.25rem;font-weight:600;letter-spacing:-.01em}
+  .brand p{font-size:.75rem;color:var(--muted);margin-top:2px}
+  .top-actions{display:flex;gap:10px}
+  .icon-btn{background:var(--card);border:1px solid var(--border);color:var(--muted);width:40px;height:40px;border-radius:10px;cursor:pointer;font-size:1rem;transition:.2s;display:flex;align-items:center;justify-content:center}
+  .icon-btn:hover{color:var(--text);border-color:#3a4152;background:var(--card-2)}
+
+  /* Stat cards */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:26px}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;position:relative;overflow:hidden}
+  .stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+  .stat .lbl{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;font-weight:500}
+  .stat .val{font-size:1.75rem;font-weight:600;letter-spacing:-.02em}
+  .stat .val small{font-size:.9rem;color:var(--muted);font-weight:400}
+  .stat.green .val{color:var(--green)}
+  .stat.amber .val{color:var(--amber)}
+
+  /* Two-column layout */
+  .layout{display:grid;grid-template-columns:360px 1fr;gap:22px;align-items:start}
+  @media(max-width:900px){.layout{grid-template-columns:1fr}}
+
+  /* Form card */
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px}
+  .panel h2{font-size:.95rem;font-weight:600;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+  .panel h2 .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;font-weight:500}
+  .field input,.field select{width:100%;padding:11px 13px;background:var(--card-2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:.9rem;transition:.2s;outline:none}
+  .field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+  .field input::placeholder{color:#4b5266}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .btn{width:100%;padding:12px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:600;font-size:.9rem;cursor:pointer;transition:.2s;letter-spacing:.01em}
+  .btn:hover{background:#4f52e0;box-shadow:0 6px 20px rgba(99,102,241,.35)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn:active{transform:translateY(1px)}
+
+  /* Ledger panel */
+  .ledger-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+  .ledger-head h2{margin:0}
+  .search{background:var(--card-2);border:1px solid var(--border);color:var(--text);padding:9px 14px;border-radius:10px;font-size:.82rem;width:200px;outline:none}
+  .search:focus{border-color:var(--accent)}
+
+  .entries{display:flex;flex-direction:column;gap:10px;max-height:640px;overflow-y:auto;padding-right:4px}
+  .entries::-webkit-scrollbar{width:6px}
+  .entries::-webkit-scrollbar-thumb{background:#2e3444;border-radius:4px}
+
+  .entry{background:var(--card-2);border:1px solid var(--border);border-radius:14px;padding:16px 18px;transition:.2s;position:relative}
+  .entry:hover{border-color:#333a4d;transform:translateY(-1px)}
+  .entry-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+  .tenant{display:flex;align-items:center;gap:12px}
+  .avatar{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.95rem;color:#fff;flex-shrink:0}
+  .tenant-info h3{font-size:.95rem;font-weight:600}
+  .tenant-info p{font-size:.72rem;color:var(--muted);margin-top:2px}
+  .entry-total{text-align:right}
+  .entry-total .amount{font-size:1.15rem;font-weight:600;letter-spacing:-.01em}
+  .entry-total .month{font-size:.7rem;color:var(--muted);margin-top:2px}
+
+  .breakdown{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .chip{background:#212634;border:1px solid #2a3040;padding:5px 10px;border-radius:8px;font-size:.72rem;color:#a8b0c2;display:flex;gap:6px;align-items:center}
+  .chip strong{color:var(--text);font-weight:500}
+  .note-line{font-size:.75rem;color:var(--muted);font-style:italic;margin-bottom:6px}
+  .del-btn{position:absolute;top:14px;right:14px;background:transparent;border:none;color:#4b5266;cursor:pointer;width:26px;height:26px;border-radius:6px;font-size:.9rem;opacity:0;transition:.2s}
+  .entry:hover .del-btn{opacity:1}
+  .del-btn:hover{background:#2a1a1a;color:var(--red)}
+
+  .empty{text-align:center;padding:60px 20px;color:var(--muted)}
+  .empty .ico{font-size:2.5rem;margin-bottom:12px;opacity:.5}
+  .empty p{font-size:.85rem}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:#1e2330;border:1px solid var(--border);color:var(--text);padding:12px 22px;border-radius:10px;font-size:.85rem;transition:.3s;opacity:0;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:100}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .toast.ok{border-color:#1a4d3a}
+  .toast.err{border-color:#4d1a1a}
+
+  .loader{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:8px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">🏢</div>
+      <div>
+        <h1>Property Ledger</h1>
+        <p>Tenant & room rent management</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="refreshBtn" title="Refresh">⟳</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="lbl">Total Collected</div>
+      <div class="val" id="statTotal">₹0</div>
+    </div>
+    <div class="stat green">
+      <div class="lbl">This Month</div>
+      <div class="val" id="statMonth">₹0</div>
+    </div>
+    <div class="stat amber">
+      <div class="lbl">Active Tenants</div>
+      <div class="val" id="statTenants">0</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Entries</div>
+      <div class="val" id="statEntries">0</div>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- Add form -->
+    <div class="panel">
+      <h2><span class="dot"></span> New Entry</h2>
+      <div class="field">
+        <label>Tenant Name</label>
+        <input type="text" id="tenantInput" placeholder="e.g. Rahul Sharma" maxlength="40">
+      </div>
+      <div class="field">
+        <label>Room / Unit</label>
+        <input type="text" id="roomInput" placeholder="e.g. Room 101" maxlength="20">
+      </div>
+      <div class="field">
+        <label>Month</label>
+        <input type="month" id="monthInput">
+      </div>
+      <div class="row2">
+        <div class="field"><label>Rent</label><input type="number" id="rentInput" placeholder="12000"></div>
+        <div class="field"><label>Electricity</label><input type="number" id="electricityInput" placeholder="850"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Water</label><input type="number" id="waterInput" placeholder="250"></div>
+        <div class="field"><label>Maintenance</label><input type="number" id="maintenanceInput" placeholder="500"></div>
+      </div>
+      <div class="field">
+        <label>Note (optional)</label>
+        <input type="text" id="noteInput" placeholder="e.g. Advance paid" maxlength="80">
+      </div>
+      <button class="btn" id="addBtn">Add Entry</button>
+    </div>
+
+    <!-- Ledger list -->
+    <div class="panel">
+      <div class="ledger-head">
+        <h2><span class="dot"></span> Ledger</h2>
+        <input type="text" class="search" id="searchInput" placeholder="Search tenant or room...">
+      </div>
+      <div class="entries" id="entriesList">
+        <div class="empty"><div class="ico">📋</div><p>Loading ledger...</p></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ================= CONFIG =================
+// Replace with your deployed Apps Script Web App URL
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwh3RtGrJps6QxtOf5SbauVO7KTH1QFerCilfoauO8hcKi_yvLta672OGaVGNE13zKE9g/exec';
+
+// ================= DOM =================
+const tenantInput = document.getElementById('tenantInput');
+const roomInput = document.getElementById('roomInput');
+const monthInput = document.getElementById('monthInput');
+const rentInput = document.getElementById('rentInput');
+const electricityInput = document.getElementById('electricityInput');
+const waterInput = document.getElementById('waterInput');
+const maintenanceInput = document.getElementById('maintenanceInput');
+const noteInput = document.getElementById('noteInput');
+const addBtn = document.getElementById('addBtn');
+const refreshBtn = document.getElementById('refreshBtn');
+const searchInput = document.getElementById('searchInput');
+const entriesList = document.getElementById('entriesList');
+const statTotal = document.getElementById('statTotal');
+const statMonth = document.getElementById('statMonth');
+const statTenants = document.getElementById('statTenants');
+const statEntries = document.getElementById('statEntries');
+const toast = document.getElementById('toast');
+
+let entries = [];
+let searchTerm = '';
+
+// ================= HELPERS =================
+function calcTotal(e){
+  return (Number(e.rent)||0)+(Number(e.electricity)||0)+(Number(e.water)||0)+(Number(e.maintenance)||0);
+}
+function fmt(n){ return '₹' + (Number(n)||0).toLocaleString('en-IN'); }
+function initials(name){
+  return (name||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
+}
+function showToast(msg, type){
+  toast.textContent = msg;
+  toast.className = 'toast show ' + (type||'');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>{ toast.className = 'toast'; }, 2800);
+}
+
+// ================= RENDER =================
+function renderStats(){
+  const total = entries.reduce((s,e)=>s+calcTotal(e),0);
+  const now = new Date();
+  const thisMonth = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  const monthTotal = entries.filter(e=>e.month===thisMonth).reduce((s,e)=>s+calcTotal(e),0);
+  const tenants = new Set(entries.map(e=>(e.tenant||'').trim().toLowerCase()).filter(Boolean)).size;
+
+  statTotal.textContent = fmt(total);
+  statMonth.textContent = fmt(monthTotal);
+  statTenants.textContent = tenants;
+  statEntries.textContent = entries.length;
+}
+
+function renderList(){
+  let list = [...entries].sort((a,b)=>String(b.month||'').localeCompare(String(a.month||'')));
+
+  if(searchTerm){
+    const q = searchTerm.toLowerCase();
+    list = list.filter(e =>
+      (e.tenant||'').toLowerCase().includes(q) ||
+      (e.room||'').toLowerCase().includes(q)
+    );
+  }
+
+  if(!list.length){
+    entriesList.innerHTML = `<div class="empty"><div class="ico">${entries.length ? '🔍' : '📋'}</div><p>${entries.length ? 'No matching entries' : 'No entries yet. Add your first one.'}</p></div>`;
+    return;
+  }
+
+  entriesList.innerHTML = list.map(e => {
+    const total = calcTotal(e);
+    return `<div class="entry">
+      <button class="del-btn" data-id="${e.id}" title="Delete">✕</button>
+      <div class="entry-top">
+        <div class="tenant">
+          <div class="avatar">${initials(e.tenant)}</div>
+          <div class="tenant-info">
+            <h3>${e.tenant || 'Unknown'}</h3>
+            <p>${e.room || 'No room'} • ${e.month || '—'}</p>
+          </div>
+        </div>
+        <div class="entry-total">
+          <div class="amount">${fmt(total)}</div>
+          <div class="month">${e.month || ''}</div>
+        </div>
+      </div>
+      <div class="breakdown">
+        <span class="chip">Rent <strong>${fmt(e.rent)}</strong></span>
+        <span class="chip">Elec <strong>${fmt(e.electricity)}</strong></span>
+        <span class="chip">Water <strong>${fmt(e.water)}</strong></span>
+        <span class="chip">Maint <strong>${fmt(e.maintenance)}</strong></span>
+      </div>
+      ${e.note ? `<div class="note-line">📝 ${e.note}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  entriesList.querySelectorAll('.del-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> deleteEntry(btn.getAttribute('data-id')));
+  });
+}
+
+function renderAll(){ renderStats(); renderList(); }
+
+// ================= API =================
+async function fetchEntries(){
+  if(!WEB_APP_URL || WEB_APP_URL.includes('YOUR_APPS_SCRIPT')){
+    showToast('Backend not configured', 'err');
+    entriesList.innerHTML = '<div class="empty"><div class="ico">⚠️</div><p>Backend not configured</p></div>';
+    return;
+  }
+  try{
+    const res = await fetch(WEB_APP_URL);
+    if(!res.ok) throw new Error('Network error');
+    const data = await res.json();
+    entries = Array.isArray(data) ? data : [];
+    renderAll();
+  }catch(err){
+    console.error(err);
+    showToast('Could not load ledger', 'err');
+    entriesList.innerHTML = '<div class="empty"><div class="ico">⚠️</div><p>Failed to load. Tap refresh.</p></div>';
+  }
+}
+
+async function addEntry(){
+  if(!WEB_APP_URL || WEB_APP_URL.includes('YOUR_APPS_SCRIPT')){
+    showToast('Backend not configured', 'err'); return;
+  }
+  const tenant = tenantInput.value.trim();
+  const room = roomInput.value.trim();
+  const month = monthInput.value;
+
+  if(!tenant){ showToast('Enter tenant name', 'err'); tenantInput.focus(); return; }
+  if(!month){ showToast('Select month', 'err'); return; }
+
+  const payload = {
+    action: 'add',
+    data: {
+      id: 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+      tenant, room, month,
+      rent: parseFloat(rentInput.value)||0,
+      electricity: parseFloat(electricityInput.value)||0,
+      water: parseFloat(waterInput.value)||0,
+      maintenance: parseFloat(maintenanceInput.value)||0,
+      note: noteInput.value.trim()
+    }
+  };
+
+  addBtn.disabled = true;
+  addBtn.innerHTML = '<span class="loader"></span> Saving...';
+
+  try{
+    const res = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error('Save failed');
+
+    // reset form but keep tenant/room/month for convenience? Clear tenant+room, keep month
+    tenantInput.value = '';
+    roomInput.value = '';
+    noteInput.value = '';
+    rentInput.value = '';
+    electricityInput.value = '';
+    waterInput.value = '';
+    maintenanceInput.value = '';
+
+    showToast('Entry added', 'ok');
+    await fetchEntries();
+  }catch(err){
+    console.error(err);
+    showToast('Could not save entry', 'err');
+  }finally{
+    addBtn.disabled = false;
+    addBtn.textContent = 'Add Entry';
+  }
+}
+
+async function deleteEntry(id){
+  if(!confirm('Delete this entry?')) return;
+  if(!WEB_APP_URL || WEB_APP_URL.includes('YOUR_APPS_SCRIPT')){
+    showToast('Backend not configured', 'err'); return;
+  }
+  try{
+    const res = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'delete', id})
+    });
+    if(!res.ok) throw new Error('Delete failed');
+    showToast('Entry deleted', 'ok');
+    await fetchEntries();
+  }catch(err){
+    console.error(err);
+    showToast('Could not delete entry', 'err');
+  }
+}
+
+// ================= INIT =================
+function init(){
+  const now = new Date();
+  monthInput.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+
+  addBtn.addEventListener('click', addEntry);
+  refreshBtn.addEventListener('click', ()=>{ fetchEntries(); showToast('Refreshing...'); });
+  searchInput.addEventListener('input', ()=>{ searchTerm = searchInput.value.trim(); renderList(); });
+  noteInput.addEventListener('keypress', e=>{ if(e.key==='Enter') addEntry(); });
+
+  fetchEntries();
+}
+init();
+</script>
+</body>
+</html>
